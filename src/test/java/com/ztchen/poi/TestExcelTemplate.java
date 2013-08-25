@@ -1,10 +1,6 @@
 package com.ztchen.poi;
 
-import java.io.IOException;
 
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.Test;
 
 import com.ztchen.poi.ExcelTemplate;
@@ -15,7 +11,43 @@ public class TestExcelTemplate
 	public void testReadTemplateByClasspath()
 	{
 		//ExcelTemplate.getInstance().readTemplateByClasspath("excel/default.xls");
-		ExcelTemplate.getInstance().readTemplateByPath("excel/default.xls");
+		ExcelTemplate template = ExcelTemplate.getInstance().readTemplateByPath("excel/default.xls");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.createNewRow();
+		template.createCell("111");
+		template.createCell("222");
+		template.createCell("333");
+		template.createCell("444");
+		template.writeToFile("E:/test01.xls");
 		
 	}
 	

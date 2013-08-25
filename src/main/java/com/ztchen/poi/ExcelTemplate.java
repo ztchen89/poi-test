@@ -25,6 +25,7 @@ public class ExcelTemplate
 	private int curColIndex;//当前列下标
 	private int curRowIndex;//当前行下标
 	private Row curRow;//当前行对象
+	private int lastRowIndex;//最后一行下标
 	
 	private ExcelTemplate()
 	{
@@ -40,7 +41,7 @@ public class ExcelTemplate
 	/*
 	 * 第一种是在classpath下读取
 	 */
-	public void readTemplateByClasspath(String path)
+	public ExcelTemplate readTemplateByClasspath(String path)
 	{
 		try
 		{
@@ -55,12 +56,14 @@ public class ExcelTemplate
 			e.printStackTrace();
 			throw new RuntimeException("读取模板不存在！");
 		}
+		
+		return this;
 	}
 	
 	/*
 	 * 第二种是直接文件路径
 	 */
-	public void readTemplateByPath(String path)
+	public ExcelTemplate readTemplateByPath(String path)
 	{
 		try
 		{
@@ -75,14 +78,17 @@ public class ExcelTemplate
 			e.printStackTrace();
 			throw new RuntimeException("读取模板不存在！");
 		}
+		
+		return this;
 	}
 	
 	private void initTemplate()
 	{
 		sheet = wb.getSheetAt(0);
 		initConfigData();
-		curRow = sheet.getRow(curRowIndex);
-		createNewRow();
+		lastRowIndex = sheet.getLastRowNum();
+		//curRow = sheet.getRow(curRowIndex);
+		//createNewRow();
 	}
 
 	//找到要插入数据的位置,几行几列
@@ -127,6 +133,11 @@ public class ExcelTemplate
 	 */
 	public void createNewRow()
 	{
+		if(lastRowIndex > curRowIndex && curRowIndex != initRowIndex)
+		{
+			sheet.shiftRows(curRowIndex, lastRowIndex, 1, true, true);
+			lastRowIndex++;
+		}
 		curRow = sheet.createRow(curRowIndex);
 		curRowIndex++;
 		curColIndex = initColIndex;//将列重新定位到初始化列
