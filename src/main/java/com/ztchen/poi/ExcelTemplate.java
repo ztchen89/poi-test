@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,6 +23,7 @@ public class ExcelTemplate
 	private static final String DATA_LINE = "datas";
 	private static final String DEFAULT_STYLE = "defaultStyles";
 	private static final String STYLE = "styles";
+	private static final String SER_NUM = "sernums";
 	private static ExcelTemplate template = new ExcelTemplate();
 	
 	private Workbook wb;
@@ -34,6 +37,7 @@ public class ExcelTemplate
 	private CellStyle defaultStyle;//默认样式
 	private float rowHeight;//默认行高
 	private Map<Integer, CellStyle> styles;//存储某一行所对应的样式
+	private int serColIndex;//序号的列
 	
 	private ExcelTemplate()
 	{
@@ -102,6 +106,7 @@ public class ExcelTemplate
 	private void initConfigData()
 	{
 		boolean findData = false;
+		boolean findSer = false;
 		for(Row row : sheet)
 		{
 			if(findData) break;//如果找到要插入的位置，则不需要往下运行
@@ -109,7 +114,13 @@ public class ExcelTemplate
 			{
 				//判断如果定位的那一列的数据类型不是String就跳过
 				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
-				String str = cell.getStringCellValue();
+				String str = cell.getStringCellValue().trim();
+				if(str.equals(SER_NUM))
+				{
+					serColIndex = cell.getColumnIndex();
+					findSer = true;
+				}
+				
 				if(str.equals(DATA_LINE))
 				{
 					initColIndex = cell.getColumnIndex();
@@ -123,12 +134,35 @@ public class ExcelTemplate
 					break;
 				}
 			}
+			if(!findSer)
+			{
+				initSer();
+			}
 		}
 		
 		System.out.println(curColIndex + "," + curRowIndex);
 		
 	}
 	
+	/*
+	 * 初始化序号位置
+	 */
+	private void initSer()
+	{
+		for(Row row : sheet)
+		{
+			for (Cell cell : row)
+			{
+				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
+				String str = cell.getStringCellValue().trim();
+				if(str.equals(SER_NUM))
+				{
+					serColIndex = cell.getColumnIndex();
+				}
+			}
+		}
+	}
+
 	private void initStyles()
 	{
 		styles = new HashMap<Integer, CellStyle>();
@@ -138,7 +172,7 @@ public class ExcelTemplate
 			{
 				//判断如果定位的那一列的数据类型不是String就跳过
 				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
-				String str = cell.getStringCellValue();
+				String str = cell.getStringCellValue().trim();
 				if(str.equals(DEFAULT_STYLE))
 				{
 					defaultStyle = cell.getCellStyle();//初始化默认样式
@@ -160,6 +194,58 @@ public class ExcelTemplate
 	{
 		Cell cell = curRow.createCell(curColIndex);
 		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+	
+	public void createCell(int value)
+	{
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+	
+	public void createCell(Date value)
+	{
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+	
+	public void createCell(double value)
+	{
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+	
+	public void createCell(boolean value)
+	{
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+	
+	public void createCell(Calendar value)
+	{
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		setCellStyle(cell);
+		
+		curColIndex++;
+	}
+
+	private void setCellStyle(Cell cell)
+	{
 		/*
 		 * 判断在map中包含列下标，就设置其存储的样式，否则设置为默认样式
 		 */
@@ -169,12 +255,10 @@ public class ExcelTemplate
 		}else {
 			cell.setCellStyle(defaultStyle);//每次创建一列，设置该列样式
 		}
-		
-		curColIndex++;
 	}
 	
 	/*
-	 * 创建新的一行
+	 *	创建新行，在使用时只要添加完一行，需要调用该方法创建
 	 */
 	public void createNewRow()
 	{
@@ -187,6 +271,46 @@ public class ExcelTemplate
 		curRow.setHeightInPoints(rowHeight);//每次创建一行，设置行高
 		curRowIndex++;
 		curColIndex = initColIndex;//将列重新定位到初始化列
+	}
+	
+	/*
+	 * 插入序号，会自动找相应的序号标示的位置完成插入
+	 */
+	public void insertSer()
+	{
+		int index = 1;
+		Row row = null;
+		Cell cell = null;
+		for(int i = initRowIndex; i < curRowIndex; i++)
+		{
+			row = sheet.getRow(i);
+			cell = row.createCell(serColIndex);
+			setCellStyle(cell);
+			cell.setCellValue(index++);
+		}
+	}
+	
+	/*
+	 * 根据map替换相应的常量，如以#号开头的常量
+	 */
+	public void replaceConstantData(Map<String, String> datas)
+	{
+		for(Row row : sheet)
+		{
+			for (Cell cell : row)
+			{
+				//判断如果定位的那一列的数据类型不是String就跳过
+				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
+				String str = cell.getStringCellValue().trim();
+				if(str.startsWith("#"))
+				{
+					if(datas.containsKey(str.substring(1)))
+					{
+						cell.setCellValue(datas.get(str.substring(1)));
+					}
+				}
+			}
+		}
 	}
 	
 	
