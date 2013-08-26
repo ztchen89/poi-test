@@ -5,9 +5,12 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -16,6 +19,8 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 public class ExcelTemplate
 {
 	private static final String DATA_LINE = "datas";
+	private static final String DEFAULT_STYLE = "defaultStyles";
+	private static final String STYLE = "styles";
 	private static ExcelTemplate template = new ExcelTemplate();
 	
 	private Workbook wb;
@@ -26,6 +31,9 @@ public class ExcelTemplate
 	private int curRowIndex;//当前行下标
 	private Row curRow;//当前行对象
 	private int lastRowIndex;//最后一行下标
+	private CellStyle defaultStyle;//默认样式
+	private float rowHeight;//默认行高
+	private Map<Integer, CellStyle> styles;//存储某一行所对应的样式
 	
 	private ExcelTemplate()
 	{
@@ -37,7 +45,6 @@ public class ExcelTemplate
 	}
 	
 	//1.读取相应的模板文档,有两种读取方式
-	
 	/*
 	 * 第一种是在classpath下读取
 	 */
@@ -103,13 +110,16 @@ public class ExcelTemplate
 				//判断如果定位的那一列的数据类型不是String就跳过
 				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
 				String str = cell.getStringCellValue();
-				if(str.endsWith(DATA_LINE))
+				if(str.equals(DATA_LINE))
 				{
 					initColIndex = cell.getColumnIndex();
 					initRowIndex = row.getRowNum();
 					curColIndex = initColIndex;
 					curRowIndex = initRowIndex;
+					defaultStyle = cell.getCellStyle();//初始化默认样式
+					rowHeight = row.getHeightInPoints();//初始化行高
 					findData = true;
+					initStyles();
 					break;
 				}
 			}
@@ -119,12 +129,47 @@ public class ExcelTemplate
 		
 	}
 	
+	private void initStyles()
+	{
+		styles = new HashMap<Integer, CellStyle>();
+		for(Row row : sheet)
+		{
+			for (Cell cell : row)
+			{
+				//判断如果定位的那一列的数据类型不是String就跳过
+				if(cell.getCellType() != Cell.CELL_TYPE_STRING) continue;
+				String str = cell.getStringCellValue();
+				if(str.equals(DEFAULT_STYLE))
+				{
+					defaultStyle = cell.getCellStyle();//初始化默认样式
+				}
+				
+				if(str.equals(STYLE))
+				{
+					//存储每一列所对应的样式
+					styles.put(cell.getColumnIndex(), cell.getCellStyle());
+				}
+			}
+		}
+	}
+
 	/*
 	 * 定位到当前行，顺序填充数据到每一列上
 	 */
 	public void createCell(String value)
 	{
-		curRow.createCell(curColIndex).setCellValue(value);
+		Cell cell = curRow.createCell(curColIndex);
+		cell.setCellValue(value);
+		/*
+		 * 判断在map中包含列下标，就设置其存储的样式，否则设置为默认样式
+		 */
+		if(styles.containsKey(curColIndex))
+		{
+			cell.setCellStyle(styles.get(curColIndex)); 
+		}else {
+			cell.setCellStyle(defaultStyle);//每次创建一列，设置该列样式
+		}
+		
 		curColIndex++;
 	}
 	
@@ -139,6 +184,7 @@ public class ExcelTemplate
 			lastRowIndex++;
 		}
 		curRow = sheet.createRow(curRowIndex);
+		curRow.setHeightInPoints(rowHeight);//每次创建一行，设置行高
 		curRowIndex++;
 		curColIndex = initColIndex;//将列重新定位到初始化列
 	}
