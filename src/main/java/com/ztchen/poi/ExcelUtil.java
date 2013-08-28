@@ -1,20 +1,28 @@
 package com.ztchen.poi;
 
+import java.beans.Beans;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelUtil
@@ -231,4 +239,144 @@ public class ExcelUtil
 		return headers;
 	}
 	
+	
+	//从excel中读取数据对象
+	private Map<Integer, String> getHeaderMap(Row titleRow, Class clazz)
+	{
+		List<ExcelHeader> headers = getHeaderLisr(clazz);
+		Map<Integer, String> map = new HashMap<Integer, String>();
+		for (Cell cell : titleRow)
+		{
+			String title = cell.getStringCellValue();
+			for(ExcelHeader excelHeader : headers)
+			{
+				if(excelHeader.getTitle().equals(title))
+				{
+					map.put(cell.getColumnIndex(), excelHeader.getMethodName().replace("get", "set"));
+					break;
+				}
+			}
+		}
+		
+		return map;
+	}
+	
+	//通过classpath读取文件
+	public List<Object> readExcel2ObjsByClasspath(String path,Class clazz, int readLine,int tailLine)
+	{
+		Workbook wb = null;
+		try
+		{
+			wb = WorkbookFactory.create(ExcelUtil.class.getResourceAsStream(path));
+			return handlerExcel2Obj(wb, clazz, readLine,tailLine);
+		} catch (InvalidFormatException e)
+		{
+			e.printStackTrace();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	//通过路径读取文件
+	public List<Object> readExcel2ObjsByPath(String path,Class clazz, int readLine,int tailLine)
+	{
+		Workbook wb = null;
+		try
+		{
+			wb = WorkbookFactory.create(new File(path));
+			return handlerExcel2Obj(wb, clazz, readLine,tailLine);
+		} catch (InvalidFormatException e)
+		{
+			e.printStackTrace();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	//通过classpath读取文件，从零行开始读
+	public List<Object> readExcel2ObjsByClasspath(String path,Class clazz)
+	{
+		return this.readExcel2ObjsByClasspath(path, clazz, 0,0);
+	}
+	
+	//通过路径读取文件，从零行开始读
+	public List<Object> readExcel2ObjsByPath(String path,Class clazz)
+	{
+		return this.readExcel2ObjsByPath(path, clazz, 0,0);
+	}
+	
+	private List<Object> handlerExcel2Obj(Workbook wb,Class clazz,int readLine,int tailLine)
+	{
+		Sheet sheet = wb.getSheetAt(0);
+		List<Object> objList = null;
+		try
+		{
+			Row row = sheet.getRow(readLine);
+			Map<Integer, String> map = getHeaderMap(row, clazz);
+			objList = new ArrayList<Object>();
+			
+			Object obj = null;
+			for(int i = readLine + 1;i <= sheet.getLastRowNum() - tailLine ;i++)
+			{
+				row = sheet.getRow(i);
+				obj = clazz.newInstance();
+				for(Cell cell : row)
+				{
+					int ci = cell.getColumnIndex();
+					String methodName = map.get(ci).substring(3);
+					methodName = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
+					BeanUtils.copyProperty(obj, methodName, this.getCellValue(cell));
+				}
+				
+				objList.add(obj);
+			}
+		} catch (InstantiationException e)
+		{
+			e.printStackTrace();
+		} catch (IllegalAccessException e)
+		{
+			e.printStackTrace();
+		} catch (InvocationTargetException e)
+		{
+			e.printStackTrace();
+		}
+		
+		return objList;
+	}
+	
+	//将各种类型转换成String类型
+	private String getCellValue(Cell c)
+	{
+		String o = null;
+		switch (c.getCellType())
+		{
+		case Cell.CELL_TYPE_BLANK:
+			o = ""; 
+			break;
+		case Cell.CELL_TYPE_BOOLEAN:
+			o = String.valueOf(c.getBooleanCellValue()); 
+			break;
+		case Cell.CELL_TYPE_FORMULA://公式类型
+			o = String.valueOf(c.getCellFormula()); 
+			break;
+		case Cell.CELL_TYPE_NUMERIC:
+			//o = String.valueOf((int)c.getNumericCellValue());
+			o = new DecimalFormat("#").format(c.getNumericCellValue());
+			break;
+		case Cell.CELL_TYPE_STRING:
+			o = c.getStringCellValue();
+			break;
+		default:
+			o = null; 
+			break;
+		}
+		
+		return o;
+	}
 }

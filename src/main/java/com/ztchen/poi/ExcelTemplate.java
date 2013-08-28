@@ -18,6 +18,11 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
+/*
+ * 该类实现基于模板的导出
+ * 如果导出序号，需要在excel中定义一个标识为sernums
+ * 如果需要替换信息，需要传入一个map,map中存储要替换的值，在excel中通过#开头
+ */
 public class ExcelTemplate
 {
 	private static final String DATA_LINE = "datas";
@@ -291,7 +296,7 @@ public class ExcelTemplate
 	}
 	
 	/*
-	 * 根据map替换相应的常量，如以#号开头的常量
+	 * 根据map替换相应的常量，替换以#号开头的常量
 	 */
 	public void replaceConstantData(Map<String, String> datas)
 	{
@@ -318,7 +323,7 @@ public class ExcelTemplate
 	
 	/*
 	 * 写入文件方式
-	 * 根据模板填充数据后写入到一个excel中，并输出到一个位置上
+	 * 根据模板填充数据后写入到一个excel中，将文件写到相应的路径下
 	 */
 	public void writeToFile(String filepath)
 	{
@@ -348,7 +353,7 @@ public class ExcelTemplate
 	}
 	
 	/*
-	 * 写入流方式
+	 * 写入输出流方式
 	 * 根据模板填充数据后写入到一个excel中，并输出到一个位置上
 	 */
 	public void writeToStream(OutputStream os)

@@ -89,4 +89,27 @@ public class TestExcelTemplate
 		users.add(new User(4, "ztchen", 22));
 		ExcelUtil.getInstance().exportObj2ExcelByPath("e:/testNoTemplate2.xls", users, User.class, false);
 	}
+	
+	@Test
+	public void testReadExcelToObject()
+	{
+		List<Object> list = ExcelUtil.getInstance().readExcel2ObjsByPath("e:/testNoTemplate2.xls", User.class);
+		for (Object object : list)
+		{
+			User user = (User) object;
+			System.out.println(user);
+		}
+	}
+	
+	@Test
+	public void testReadExcelToObject02()
+	{
+		List<Object> list = ExcelUtil.getInstance().readExcel2ObjsByPath("e:/user.xls", User.class,1,2);
+		for (Object object : list)
+		{
+			User user = (User) object;
+			System.out.println(user);
+		}
+	}
+	
 }
