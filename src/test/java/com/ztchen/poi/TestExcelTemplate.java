@@ -1,11 +1,14 @@
 package com.ztchen.poi;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
 
+import com.ztchen.model.User;
 import com.ztchen.poi.ExcelTemplate;
 
 public class TestExcelTemplate
@@ -61,4 +64,18 @@ public class TestExcelTemplate
 		
 	}
 	
+	@Test
+	public void testObj2Excel()
+	{
+		List<User> users = new ArrayList<User>();
+		users.add(new User(1, "ztchen", 22));
+		users.add(new User(2, "ztchen", 22));
+		users.add(new User(3, "ztchen", 22));
+		users.add(new User(4, "ztchen", 22));
+		Map<String, String> datas = new HashMap<String, String>();
+		datas.put("title", "测试用户信息");
+		datas.put("date", "2013-08-26");
+		datas.put("dep", "kmust");
+		ExcelUtil.getInstance().exportObj2ExcelByTemplate(datas,"/excel/user.xls", "e:/user.xls",users, User.class, true);
+	}
 }

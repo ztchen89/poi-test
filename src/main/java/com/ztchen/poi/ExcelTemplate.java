@@ -295,6 +295,8 @@ public class ExcelTemplate
 	 */
 	public void replaceConstantData(Map<String, String> datas)
 	{
+		if(datas == null)
+			return;
 		for(Row row : sheet)
 		{
 			for (Cell cell : row)
