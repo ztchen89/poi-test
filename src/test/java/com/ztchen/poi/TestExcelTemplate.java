@@ -78,4 +78,15 @@ public class TestExcelTemplate
 		datas.put("dep", "kmust");
 		ExcelUtil.getInstance().exportObj2ExcelByTemplate(datas,"/excel/user.xls", "e:/user.xls",users, User.class, true);
 	}
+	
+	@Test
+	public void testObj2ExcelByDefault()
+	{
+		List<User> users = new ArrayList<User>();
+		users.add(new User(1, "ztchen", 22));
+		users.add(new User(2, "ztchen", 22));
+		users.add(new User(3, "ztchen", 22));
+		users.add(new User(4, "ztchen", 22));
+		ExcelUtil.getInstance().exportObj2ExcelByPath("e:/testNoTemplate2.xls", users, User.class, false);
+	}
 }

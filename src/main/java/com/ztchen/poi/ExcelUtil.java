@@ -1,5 +1,8 @@
 package com.ztchen.poi;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -7,6 +10,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelUtil
 {
@@ -24,51 +33,62 @@ public class ExcelUtil
 	/*
 	 * 处理对象输出到excel的方法
 	 */
-	private ExcelTemplate handlerObj2Excel(Map<String,String> datas, String templatePath,List objList, Class clazz,boolean isClasspath) throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException
+	private ExcelTemplate handlerObj2Excel(Map<String,String> datas, String templatePath,List objList, Class clazz,boolean isClasspath)
 	{
-		ExcelTemplate template = ExcelTemplate.getInstance();
-		if(isClasspath)
+		ExcelTemplate template = null;
+		try
 		{
-			template.readTemplateByClasspath(templatePath);
-		}else {
-			template.readTemplateByPath(templatePath);
-		}
-		
-		List<ExcelHeader> headers = getHeaderLisr(clazz);
-		Collections.sort(headers);
-		//输出标题
-		template.createNewRow();
-		for (ExcelHeader excelHeader : headers)
-		{
-			template.createCell(excelHeader.getTitle());
-		}
-		//输出值
-		for(Object obj : objList)
-		{
-			template.createNewRow();
-			for(ExcelHeader excelHeader : headers)
+			template = ExcelTemplate.getInstance();
+			if(isClasspath)
 			{
-				String methodName = excelHeader.getMethodName();
-				Method m = clazz.getDeclaredMethod(methodName);
-				Object rel = m.invoke(obj);
-				template.createCell(rel.toString());
+				template.readTemplateByClasspath(templatePath);
+			}else {
+				template.readTemplateByPath(templatePath);
 			}
+			
+			List<ExcelHeader> headers = getHeaderLisr(clazz);
+			Collections.sort(headers);
+			//输出标题
+			template.createNewRow();
+			for (ExcelHeader excelHeader : headers)
+			{
+				template.createCell(excelHeader.getTitle());
+			}
+			//输出值
+			for(Object obj : objList)
+			{
+				template.createNewRow();
+				for(ExcelHeader excelHeader : headers)
+				{
+//					String methodName = excelHeader.getMethodName();
+//					Method m = clazz.getDeclaredMethod(methodName);
+//					m.invoke(obj);
+//					Object rel = m.invoke(obj);
+					template.createCell(getObj(excelHeader, clazz, obj));
+				}
+			}
+			
+			template.replaceConstantData(datas);
+		} catch (SecurityException e)
+		{
+			e.printStackTrace();
+		} catch (IllegalArgumentException e)
+		{
+			e.printStackTrace();
 		}
-		
-		template.replaceConstantData(datas);
 		return template;
 	}
 	
-	/*
-	 * 将excel输出到文件
-	 */
-	public void exportObj2ExcelByTemplate(Map<String,String> datas, String templatePath,String outputPath, List objList, Class clazz,boolean isClasspath)
+	
+	private String getObj(ExcelHeader excelHeader,Class clazz,Object obj)
 	{
 		try
 		{
-			ExcelTemplate template = handlerObj2Excel(datas, templatePath, objList, clazz, isClasspath);
-			template.writeToFile(outputPath);
-			
+			String methodName = excelHeader.getMethodName();
+			Method m = clazz.getDeclaredMethod(methodName);
+			m.invoke(obj);
+			Object rel = m.invoke(obj);
+			return rel.toString();
 		} catch (NoSuchMethodException e)
 		{
 			e.printStackTrace();
@@ -85,6 +105,17 @@ public class ExcelUtil
 		{
 			e.printStackTrace();
 		}
+		
+		return null;
+	}
+	/*
+	 * 将excel输出到文件
+	 */
+	public void exportObj2ExcelByTemplate(Map<String,String> datas, String templatePath,String outputPath, List objList, Class clazz,boolean isClasspath)
+	{
+		ExcelTemplate template = handlerObj2Excel(datas, templatePath, objList, clazz, isClasspath);
+		template.writeToFile(outputPath);
+			
 	}
 	
 	/*
@@ -92,27 +123,92 @@ public class ExcelUtil
 	 */
 	public void exportObj2ExcelByTemplate(Map<String,String> datas, String templatePath,OutputStream os, List objList, Class clazz,boolean isClasspath)
 	{
+		ExcelTemplate template = handlerObj2Excel(datas, templatePath, objList, clazz, isClasspath);
+		template.writeToStream(os);
+	}
+	
+	/*
+	 * 不基于模板，将对象输出到excel中
+	 */
+	private Workbook handleExportObj2Excel(List objList, Class clazz,boolean isXssf)
+	{
+		Workbook wb = null;
+		if(isXssf)
+		{
+			wb = new XSSFWorkbook();
+		}else {
+			wb = new HSSFWorkbook();
+		}
+		
+		Sheet sheet = wb.createSheet();
+		Row row = sheet.createRow(0);
+		List<ExcelHeader> headers = getHeaderLisr(clazz);
+		Collections.sort(headers);//排序很重要
+		//写标题
+		for (int i = 0; i < headers.size(); i++)
+		{
+			row.createCell(i).setCellValue(headers.get(i).getTitle());
+		}
+		
+		//写数据
+		Object obj = null;
+		for (int i = 0; i < objList.size(); i++)
+		{
+			row = sheet.createRow(i + 1);
+			obj = objList.get(i);
+			for (int j = 0; j < headers.size(); j++)
+			{
+				row.createCell(j).setCellValue(getObj(headers.get(j), clazz, obj));
+			}
+		}
+		
+		return wb;
+		
+	}
+	
+	/*
+	 * 不基于模板的输出，输出到一个路径
+	 */
+	public void exportObj2ExcelByPath(String outputPath, List objList, Class clazz,boolean isXssf)
+	{
+		Workbook wb = handleExportObj2Excel(objList, clazz, isXssf);
+		FileOutputStream fos = null;
 		try
 		{
-			ExcelTemplate template = handlerObj2Excel(datas, templatePath, objList, clazz, isClasspath);
-			template.writeToStream(os);
-			
-		} catch (NoSuchMethodException e)
+			fos = new FileOutputStream(outputPath);
+			wb.write(fos);
+		} catch (FileNotFoundException e)
 		{
 			e.printStackTrace();
-		} catch (SecurityException e)
+		} catch (IOException e)
 		{
 			e.printStackTrace();
-		} catch (IllegalAccessException e)
+		}finally{
+			try
+			{
+				if(fos != null)
+					fos.close();
+			} catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/*
+	 * 不基于模板的输出，输出到一个流
+	 */
+	public void exportObj2ExcelByStream(OutputStream os, List objList, Class clazz,boolean isXssf)
+	{
+		try
 		{
-			e.printStackTrace();
-		} catch (IllegalArgumentException e)
-		{
-			e.printStackTrace();
-		} catch (InvocationTargetException e)
+			Workbook wb = handleExportObj2Excel(objList, clazz, isXssf);
+			wb.write(os);
+		} catch (IOException e)
 		{
 			e.printStackTrace();
 		}
+		
 	}
 	
 	public List<ExcelHeader> getHeaderLisr(Class clazz)
@@ -134,20 +230,5 @@ public class ExcelUtil
 		
 		return headers;
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 }
